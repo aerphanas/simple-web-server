@@ -1,4 +1,5 @@
 use std::{
+    fs::read_to_string,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
 };
@@ -24,11 +25,15 @@ fn handle_connection(mut stream: TcpStream) {
     request.iter().for_each(|i| println!("{}", i));
 
     let (status, file) = match request.get(0).unwrap() == "GET / HTTP/1.1" {
-        true => ("HTTP/1.1 200 OK", "index.html"),
-        false => ("HTTP/1.1 404 NOT FOUND", "404.html"),
+        true => ("HTTP/1.1 200 OK", "serve/index.html"),
+        false => ("HTTP/1.1 404 NOT FOUND", "serve/404.html"),
     };
 
-    stream.write_all(status.as_bytes()).unwrap();
+    let content = read_to_string(file).unwrap();
+    let length = content.len();
+    let response = format!("{status}\r\nContent-Length: {length}\r\n\r\n{content}");
+
+    stream.write_all(response.as_bytes()).unwrap();
 
     println!("");
 }
