@@ -22,8 +22,13 @@ fn handle_connection(mut stream: TcpStream) {
         .take_while(|p| !p.is_empty())
         .collect();
     request.iter().for_each(|i| println!("{}", i));
-    println!("");
 
-    let response = "HTTP/1.1 200 OK\r\n\r\n";
-    stream.write_all(response.as_bytes()).unwrap();
+    let (status, file) = match request.get(0).unwrap() == "GET / HTTP/1.1" {
+        true => ("HTTP/1.1 200 OK", "index.html"),
+        false => ("HTTP/1.1 404 NOT FOUND", "404.html"),
+    };
+
+    stream.write_all(status.as_bytes()).unwrap();
+
+    println!("");
 }
