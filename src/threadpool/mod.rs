@@ -1,6 +1,9 @@
 mod worker;
 
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{
+    mpsc::{self, Sender},
+    Arc, Mutex,
+};
 
 use worker::Worker;
 
@@ -8,7 +11,7 @@ type Job = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: Option<Sender<Job>>,
 }
 
 impl ThreadPool {
@@ -22,7 +25,7 @@ impl ThreadPool {
         (0..size).for_each(|num| threads.push(Worker::new(num, Arc::clone(&receiver))));
         ThreadPool {
             workers: threads,
-            sender,
+            sender: Some(sender),
         }
     }
     pub fn execute<F>(&self, f: F)
@@ -30,6 +33,18 @@ impl ThreadPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.send(job).unwrap();
+        self.sender.as_ref().unwrap().send(job).unwrap();
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+        self.workers.iter_mut().for_each(|f| {
+            println!("Shutting down worker {}", f.id);
+            if let Some(thread) = f.thread.take() {
+                thread.join().unwrap()
+            }
+        });
     }
 }

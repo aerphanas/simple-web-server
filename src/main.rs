@@ -16,11 +16,12 @@ fn main() {
     let listener = TcpListener::bind(ADDR).unwrap();
     let pool = ThreadPool::new(2);
 
-    listener.incoming().for_each(|i| {
+    listener.incoming().take(2).for_each(|i| {
         let stream = i.unwrap();
         println!("Connection Enstablished!");
         pool.execute(|| handle_connection(stream));
-    })
+    });
+    println!("Shutting down.");
 }
 
 fn handle_connection(mut stream: TcpStream) {
